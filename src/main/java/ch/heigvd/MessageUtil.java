@@ -8,8 +8,9 @@ public class MessageUtil {
     public enum TypeMessage {
         ANNONCE((byte) 0), // le message d'annonce de l'éléction
         RESULTAT((byte) 1), // le message du résultat de l'éléction
-        QUITTANCE((byte) 2), // le message de quittance pour une annonce, un résultat ou un ping
-        PING((byte) 3); // le message pour tester si l'élu n'est pas en panne.
+        QUITTANCE((byte) 2), // le message de quittance pour une annonce, un résultat.
+        PING((byte) 3), // le message pour tester si l'élu n'est pas en panne.
+        ECHO((byte) 4); // le message de réponse du ping
 
         private byte valueMessage;
 
@@ -111,7 +112,7 @@ public class MessageUtil {
         return siteElu;
     }
 
-    public static List<Integer> extraitNumeroSiteResultat(byte[] messageResultat) {
+    public static List<Integer> extraitSitesResultat(byte[] messageResultat) {
 
         List<Integer> resultat = new ArrayList<Integer>();
 
@@ -141,6 +142,13 @@ public class MessageUtil {
     public static byte[] creationPing() {
         byte[] message = new byte[1];
         message[0] = TypeMessage.PING.valueMessage;
+
+        return message;
+    }
+
+    public static byte[] creationEcho() {
+        byte[] message = new byte[1];
+        message[0] = TypeMessage.ECHO.valueMessage;
 
         return message;
     }

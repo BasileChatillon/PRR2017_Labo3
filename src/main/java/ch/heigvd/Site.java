@@ -40,7 +40,7 @@ public class Site {
     }
 
     public byte getLastByteOfIp() {
-        return (byte) -ip.getAddress()[3];
+        return ip.getAddress()[3];
     }
     public void setIp(InetAddress ip) {
         this.ip = ip;

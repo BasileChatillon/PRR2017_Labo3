@@ -14,6 +14,8 @@ public class App extends Thread {
     private int numero,
             elu;
 
+    private Gestionnaire gestionnaire;
+
     public App(String[] args) {
 
         if (args.length != 1) {
@@ -29,6 +31,16 @@ public class App extends Thread {
         for (Site site : sites) {
             System.out.println(site);
         }
+
+        gestionnaire = new Gestionnaire(sites, numero);
+        gestionnaire.start();
+
+    }
+
+    public void run(){
+        gestionnaire.commencerElection();
+
+        elu = gestionnaire.getElu();
     }
 
     private List<Site> getAllSite() {
