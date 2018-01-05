@@ -39,6 +39,9 @@ public class Site {
         return ip;
     }
 
+    public byte getLastByteOfIp() {
+        return (byte) -ip.getAddress()[3];
+    }
     public void setIp(InetAddress ip) {
         this.ip = ip;
     }
@@ -52,6 +55,6 @@ public class Site {
     }
 
     public String toString(){
-        return "Site n°" + numero + " : " + ip.toString() + "\\" + port;
+        return "Site n°" + numero + " : " + ip.toString() + " - port n°" + port + " (aptitude : " + aptitude + ")";
     }
 }

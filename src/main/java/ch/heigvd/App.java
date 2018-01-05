@@ -9,22 +9,29 @@ import java.util.Properties;
 
 /**
  * Hello world!
- *
  */
-public class App extends Thread
-{
+public class App extends Thread {
+    private int numero,
+            elu;
 
     public App(String[] args) {
+
+        if (args.length != 1) {
+            System.err.println("Invalid argument, you need to pass a site number");
+            System.exit(1);
+        }
+
+        this.numero = Integer.parseInt(args[0]);
 
         List<Site> sites = getAllSite();
 
         System.out.println("App: affichage des sites");
-        for(Site site : sites){
+        for (Site site : sites) {
             System.out.println(site);
         }
     }
 
-    private List<Site> getAllSite(){
+    private List<Site> getAllSite() {
         List<Site> sites = new ArrayList<Site>();
 
         InputStream inputStream;
@@ -32,9 +39,8 @@ public class App extends Thread
         try {
             Properties prop = new Properties();
             String propFileName = "site.properties";
-            ClassLoader classLoader = getClass().getClassLoader();
 
-            inputStream = classLoader.getResourceAsStream(propFileName);
+            inputStream = getClass().getClassLoader().getResourceAsStream(propFileName);
 
             if (inputStream != null) {
                 prop.load(inputStream);
@@ -49,7 +55,8 @@ public class App extends Thread
             String siteAddress;
             InetAddress siteIP;
             int sitePort;
-            for(int i = 0 ; i < Integer.parseInt(number_site) ; ++i){
+
+            for (int i = 0; i < Integer.parseInt(number_site); ++i) {
                 siteAddress = prop.getProperty(String.valueOf(i));
                 String[] values = siteAddress.split(":");
                 siteIP = InetAddress.getByName(values[0]);
@@ -66,8 +73,7 @@ public class App extends Thread
         return sites;
     }
 
-    public static void main( String[] args )
-    {
+    public static void main(String[] args) {
         new App(args).start();
     }
 

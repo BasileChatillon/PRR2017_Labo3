@@ -10,7 +10,7 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel target="1.8">
-      <module name="PRR2017_Labo3" target="1.5" />
+      <module name="PRR2017_Labo3" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>
