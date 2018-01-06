@@ -133,7 +133,7 @@ public class Gestionnaire extends Thread {
                         System.out.println("Gestionnaire:: Reception d'un message de ping");
                         byte[] messageResponse = MessageUtil.creationEcho();
                         System.out.println("Gestionnaire:: envoie de l'Echo");
-                        sendMessage(message, packet.getAddress(), packet.getPort());
+                        sendMessage(messageResponse, packet.getAddress(), packet.getPort());
                         break;
                 }
             } catch (IOException e) {
@@ -175,7 +175,6 @@ public class Gestionnaire extends Thread {
     }
 
     public Site getElu() {
-        int elu = moi;
 
         if(etapeEnCours == EtapeEnCours.ANNONCE){
             synchronized (mutex) {
@@ -188,6 +187,6 @@ public class Gestionnaire extends Thread {
             }
         }
 
-        return sites.get(elu);
+        return sites.get(coordinateur);
     }
 }
