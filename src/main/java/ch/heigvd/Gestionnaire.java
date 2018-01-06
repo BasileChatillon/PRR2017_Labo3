@@ -27,6 +27,7 @@ public class Gestionnaire extends Thread {
     private DatagramSocket socket;
 
     Gestionnaire(List<Site> sites, int moi) {
+        this.sites = sites;
         this.moi = moi;
         this.voisin = (moi + 1) % sites.size();
         this.monApt = sites.get(moi).getAptitude();
@@ -35,7 +36,7 @@ public class Gestionnaire extends Thread {
 
         this.attendreQuittance = false;
         try {
-            System.out.println("création du socker pour le site n°" + moi);
+            System.out.println("Création du socket de récéption pour le site n°" + moi);
             socket = new DatagramSocket(sites.get(moi).getPort());
         } catch (SocketException e) {
             System.err.println("Echeck de la création du socker pour le site n°" + moi);
@@ -47,25 +48,29 @@ public class Gestionnaire extends Thread {
     public void run() {
         while (true) {
             // la taille du tampon est le plus long message possible, soit quand tous les sites on répondu à l'annonce.
-            byte[] message = new byte[1 + 2 * 4 * sites.size()];
+            int messageTailleMax = 1 + 2 * 4 * sites.size();
 
-            DatagramPacket packet = new DatagramPacket(message, message.length);
+            DatagramPacket packet = new DatagramPacket(new byte[messageTailleMax], messageTailleMax);
 
             // attente de récéption d'un message
             try {
                 socket.receive(packet);
 
+                byte[] message = new byte[packet.getLength()];
+                System.arraycopy(packet.getData(), packet.getOffset(), message, 0, packet.getLength());
+
                 switch (MessageUtil.getTypeOfMessage(message)) {
                     case ANNONCE:
+                        System.out.println("Reception d'un message d'annonce");
                         // on récupère les site qui ont émis une annonce
                         List<Integer> siteAnnonces = MessageUtil.extraitAnnonce(message);
 
                         if (siteAnnonces.contains(moi)) {
-
+                            System.out.println("Fin de la boucle, on détermine l'élu");
                             // On récupère le site qui à la meilleur atptitude
                             coordinateur = siteAnnonces.stream()
-                                    .sorted(Comparator.comparing(u -> sites.get((int) u).getAptitude())
-                                            .thenComparing(u -> -sites.get((int) u).getLastByteOfIp()))
+                                    .sorted(Comparator.comparing(u -> -sites.get((int) u).getAptitude())
+                                            .thenComparing(u -> sites.get((int) u).getLastByteOfIp()))
                                     .limit(1)
                                     .collect(Collectors.toList())
                                     .get(0);
@@ -73,6 +78,7 @@ public class Gestionnaire extends Thread {
                             // On commence à envoyer les résultats
                             // On prépare le message
                             byte[] messageResultat = MessageUtil.creationResultat(coordinateur, moi);
+                            System.out.println("Election terminée, le site elu est " + coordinateur);
                             sendMessage(messageResultat);
                             // l'étape est maintenant les résultats
                             etapeEnCours = EtapeEnCours.RESULTAT;
@@ -82,6 +88,7 @@ public class Gestionnaire extends Thread {
                             siteAnnonces.add(moi);
                             // On crée le nouveau message et on l'envoie
                             byte[] messageAnnonce = MessageUtil.creationAnnonce(siteAnnonces);
+                            System.out.println("Election non terminée, on s'ajoute à la liste");
                             sendMessage(messageAnnonce);
                             etapeEnCours = EtapeEnCours.ANNONCE;
                         }
@@ -89,6 +96,7 @@ public class Gestionnaire extends Thread {
                         break;
 
                     case RESULTAT:
+                        System.out.println("Reception d'un message de résultat");
                         List<Integer> siteResultat = MessageUtil.extraitSitesResultat(message);
                         int elu = MessageUtil.extraitEluResultat(message);
 
@@ -97,12 +105,15 @@ public class Gestionnaire extends Thread {
                             etapeEnCours = EtapeEnCours.FINI;
                         } else if (etapeEnCours == EtapeEnCours.RESULTAT && elu != coordinateur) {
                             byte[] messageAnnonce = MessageUtil.creationAnnonce(moi);
+                            System.out.println("On recommence une élection");
                             sendMessage(messageAnnonce);
                             etapeEnCours = etapeEnCours.ANNONCE;
                         } else if (etapeEnCours == EtapeEnCours.ANNONCE) {
                             coordinateur = elu;
+
                             siteResultat.add(moi);
                             byte[] messageResultat = MessageUtil.creationResultat(elu, siteResultat);
+                            System.out.println("Election terminée, annonce du résultat");
                             sendMessage(messageResultat);
                             // l'étape est maintenant les résultats
                             etapeEnCours = EtapeEnCours.RESULTAT;
@@ -110,13 +121,10 @@ public class Gestionnaire extends Thread {
                         break;
 
                     case PING:
+                        System.out.println("Reception d'un message de ping");
                         byte[] messageResponse = MessageUtil.creationEcho();
+                        System.out.println("envoie de l'Echo");
                         sendMessage(message, packet.getAddress(), packet.getPort());
-                        break;
-
-                    case QUITTANCE:
-
-                        attendreQuittance = false;
                         break;
                 }
             } catch (IOException e) {

@@ -6,8 +6,8 @@ import java.util.List;
 public class MessageUtil {
 
     public enum TypeMessage {
-        ANNONCE((byte) 0), // le message d'annonce de l'éléction
-        RESULTAT((byte) 1), // le message du résultat de l'éléction
+        RESULTAT((byte) 0), // le message du résultat de l'éléction
+        ANNONCE((byte) 1), // le message d'annonce de l'éléction
         QUITTANCE((byte) 2), // le message de quittance pour une annonce, un résultat.
         PING((byte) 3), // le message pour tester si l'élu n'est pas en panne.
         ECHO((byte) 4); // le message de réponse du ping
@@ -35,7 +35,7 @@ public class MessageUtil {
         int j = 0;
         for (int numeroSite : numeroSites) {
 
-            for (int i = 4; i >= 0; i--) {
+            for (int i = 3; i > 0; i--) {
                 message[j + i + 1] = (byte) (numeroSite & 0xFF);
                 numeroSite >>= 8;
             }
@@ -60,17 +60,17 @@ public class MessageUtil {
         message[0] = TypeMessage.RESULTAT.valueMessage;
 
         // Ajout du numéro de l'élu dans le message
-        for (int i = 4; i >= 0; i--) {
+        for (int i = 3; i > 0; i--) {
             message[i + 1] = (byte) (siteElu & 0xFF);
             siteElu >>= 8;
         }
 
 
         // Ajout du numéro des sites  dans le message
-        int j = 4;
+        int j = 1;
         for (int numeroSite : numeroSites) {
 
-            for (int i = 4; i >= 0; i--) {
+            for (int i = 3; i > 0; i--) {
                 message[j * 4 + i + 1] = (byte) (numeroSite & 0xFF);
                 numeroSite >>= 8;
             }
