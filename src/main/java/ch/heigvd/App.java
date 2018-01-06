@@ -2,21 +2,27 @@ package ch.heigvd;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-import java.net.InetAddress;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Random;
 
 /**
  * Hello world!
  */
 public class App extends Thread {
-    private int numero,
-            elu;
+    private int numero;
+    private Site elu;
 
     private Gestionnaire gestionnaire;
 
+    private DatagramSocket socket;
+    Random r;
+
+
     public App(String[] args) {
+        r = new Random();
 
         if (args.length != 1) {
             System.err.println("Invalid argument, you need to pass a site number");
@@ -37,10 +43,59 @@ public class App extends Thread {
 
     }
 
-    public void run(){
+    public void run() {
+        System.out.println("Applicatif:: démarage des permières élections");
         gestionnaire.commencerElection();
 
-        elu = gestionnaire.getElu();
+        try {
+            System.out.println("Applicatif:: Création du socket de récéption pour le site n°" + numero);
+            socket = new DatagramSocket();
+        } catch (SocketException e) {
+            System.err.println("Applicatif:: Echeq de la création du socker pour le site n°" + numero);
+            e.printStackTrace();
+        }
+
+        DatagramPacket paquet;
+
+        while (true) {
+            System.out.println("Applicatif:: récupération de l'élu");
+            elu = gestionnaire.getElu();
+            System.out.println("Applicatif:: L'élu est : " + elu.getNumero());
+
+            try {
+                if (elu.getNumero() == numero) {
+                    sleep(3000 + r.nextInt(2000));
+                    continue;
+                }
+                System.out.println("Applicatif:: Création du Ping");
+                byte[] messagePing = MessageUtil.creationPing();
+                paquet = new DatagramPacket(messagePing, messagePing.length, elu.getIp(), elu.getPort());
+
+                socket.send(paquet);
+
+                paquet = new DatagramPacket(new byte[1], 1);
+
+                // On pose une limite de temps sur la réception du reçu
+                System.out.println("Applicatif:: récupération de l'écho");
+                socket.setSoTimeout(200);
+                socket.receive(paquet);
+
+
+                byte[] message = new byte[paquet.getLength()];
+                System.arraycopy(paquet.getData(), paquet.getOffset(), message, 0, paquet.getLength());
+
+                if (MessageUtil.getTypeOfMessage(message) == MessageUtil.TypeMessage.ECHO) {
+                    System.out.println("L'élu est toujours en ligne");
+                    sleep(3000 + r.nextInt(2000));
+                }
+
+            } catch (SocketTimeoutException e) {
+                System.out.println("Applicatif:: l'élu est hs, démarrage d'élections");
+                gestionnaire.commencerElection();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private List<Site> getAllSite() {
