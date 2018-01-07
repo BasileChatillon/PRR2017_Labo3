@@ -1,13 +1,9 @@
 package ch.heigvd;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
+import java.net.*;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 public class Gestionnaire extends Thread {
@@ -19,6 +15,8 @@ public class Gestionnaire extends Thread {
 
     private EtapeEnCours etapeEnCours;
     private List<Site> sites;
+
+    private int numberSiteTot;
 
     private int moi, voisin, siteUntel, coordinateur;
     private int monApt, aptUntel;
@@ -34,6 +32,7 @@ public class Gestionnaire extends Thread {
         this.voisin = (moi + 1) % sites.size();
         this.monApt = sites.get(moi).getAptitude();
         this.mutex = new Object();
+        this.numberSiteTot = sites.size();
 
         this.etapeEnCours = EtapeEnCours.FINI;
 
@@ -53,18 +52,21 @@ public class Gestionnaire extends Thread {
             // la taille du tampon est le plus long message possible, soit quand tous les sites on répondu à l'annonce.
             int messageTailleMax = 1 + 2 * 4 * sites.size();
 
-            DatagramPacket packet = new DatagramPacket(new byte[messageTailleMax], messageTailleMax);
+            DatagramPacket packetRecu = new DatagramPacket(new byte[messageTailleMax], messageTailleMax);
 
             // attente de récéption d'un message
             try {
-                socket.receive(packet);
+                socket.receive(packetRecu);
 
                 // Récupération du message
-                byte[] message = new byte[packet.getLength()];
-                System.arraycopy(packet.getData(), packet.getOffset(), message, 0, packet.getLength());
+                byte[] message = new byte[packetRecu.getLength()];
+                System.arraycopy(packetRecu.getData(), packetRecu.getOffset(), message, 0, packetRecu.getLength());
 
                 switch (MessageUtil.getTypeOfMessage(message)) {
                     case ANNONCE:
+                        // On commence par envoyer la quittance à l'émetteur du message
+                        sendQuittance(packetRecu.getAddress(), packetRecu.getPort());
+
                         System.out.println("Gestionnaire:: Reception d'un message d'annonce");
                         // on récupère les site qui ont émis une annonce
                         List<Integer> siteAnnonces = MessageUtil.extraitAnnonce(message);
@@ -99,6 +101,9 @@ public class Gestionnaire extends Thread {
                         break;
 
                     case RESULTAT:
+                        // On commence par envoyer la quittance à l'émetteur du message
+                        sendQuittance(packetRecu.getAddress(), packetRecu.getPort());
+
                         System.out.println("Gestionnaire:: Reception d'un message de résultat");
                         List<Integer> siteResultat = MessageUtil.extraitSitesResultat(message);
                         int elu = MessageUtil.extraitEluResultat(message);
@@ -106,7 +111,7 @@ public class Gestionnaire extends Thread {
                         if (siteResultat.contains(moi)) {
                             // Si le résultat à fait le tour de l'anneau, alors on est dans la liste et le coordinateur est le bon
                             etapeEnCours = EtapeEnCours.FINI;
-                            synchronized (mutex){
+                            synchronized (mutex) {
                                 mutex.notifyAll();
                             }
                         } else if (etapeEnCours == EtapeEnCours.RESULTAT && elu != coordinateur) {
@@ -123,7 +128,7 @@ public class Gestionnaire extends Thread {
                             sendMessage(messageResultat);
                             // l'étape est maintenant les résultats
                             etapeEnCours = EtapeEnCours.RESULTAT;
-                            synchronized (mutex){
+                            synchronized (mutex) {
                                 mutex.notifyAll();
                             }
                         }
@@ -131,9 +136,7 @@ public class Gestionnaire extends Thread {
 
                     case PING:
                         System.out.println("Gestionnaire:: Reception d'un message de ping");
-                        byte[] messageResponse = MessageUtil.creationEcho();
-                        System.out.println("Gestionnaire:: envoie de l'Echo");
-                        sendMessage(messageResponse, packet.getAddress(), packet.getPort());
+                        sendQuittance(packetRecu.getAddress(), packetRecu.getPort());
                         break;
                 }
             } catch (IOException e) {
@@ -142,41 +145,79 @@ public class Gestionnaire extends Thread {
         }
     }
 
-    private void sendMessage(byte[] message) {
-        sendMessage(message, sites.get(voisin).getIp(), sites.get(voisin).getPort());
-    }
-
-    private void sendMessage(byte[] message, InetAddress ip, int port) {
+    private void sendQuittance(InetAddress ip, int port) {
+        byte[] message = MessageUtil.creationQuittance();
         paquet = new DatagramPacket(message, message.length, ip, port);
         try {
             socket.send(paquet);
         } catch (IOException e) {
+            System.err.println("Gestionnaire:: échec d'envoi de la quittance");
+            e.printStackTrace();
+
+        }
+    }
+
+    private void sendMessage(byte[] message) {
+        InetAddress ip;
+        int port;
+        int voisinFonctionnel = voisin;
+
+        DatagramSocket socketQuittance = null;
+        DatagramPacket packetMessage = null;
+        try {
+            socketQuittance = new DatagramSocket();
+        } catch (SocketException e) {
+            System.err.println("Gestionnaire:: problème lors de l'ouverture du socket d'envoie du message");
             e.printStackTrace();
         }
+
+        boolean quittanceRecue = false;
+        boolean tourAnneau = false;
+
+
+        while (quittanceRecue == false && tourAnneau != true) {
+            ip = sites.get(voisinFonctionnel).getIp();
+            port = sites.get(voisinFonctionnel).getPort();
+
+            try {
+                packetMessage = new DatagramPacket(message, message.length, ip, port);
+                socketQuittance.send(packetMessage);
+
+                socketQuittance.setSoTimeout(200);
+                socketQuittance.receive(packetMessage);
+
+                if (MessageUtil.getTypeOfMessage(packetMessage.getData()) == MessageUtil.TypeMessage.QUITTANCE) {
+                    quittanceRecue = true;
+                }
+            } catch (SocketTimeoutException e) {
+                System.out.println("Gestionnaire:: voisin n°" + voisinFonctionnel + " est inactif");
+                voisinFonctionnel = (voisinFonctionnel + 1) % numberSiteTot;
+                if (voisinFonctionnel == moi) {
+                    etapeEnCours = EtapeEnCours.FINI;
+                    tourAnneau = true;
+                    coordinateur = moi;
+                    synchronized (mutex) {
+                        mutex.notifyAll();
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
         attendreQuittance = true;
     }
 
     public void commencerElection() {
         System.out.println("Gestionnaire:: début des élections");
-
         etapeEnCours = EtapeEnCours.ANNONCE;
-
         byte[] message = MessageUtil.creationAnnonce(moi);
 
-        paquet = new DatagramPacket(message, message.length, sites.get(voisin).getIp(), sites.get(voisin).getPort());
-        try {
-            socket.send(paquet); // Envoyer le message // 8
-        } catch (IOException e) {
-            System.err.println("Gestionnaire:: Echec lors du démarrage de l'élection");
-            e.printStackTrace();
-        }
-
-        attendreQuittance = true;
+        sendMessage(message);
     }
 
     public Site getElu() {
-
-        if(etapeEnCours == EtapeEnCours.ANNONCE){
+        if (etapeEnCours == EtapeEnCours.ANNONCE) {
             synchronized (mutex) {
                 try {
                     mutex.wait();

@@ -84,7 +84,7 @@ public class App extends Thread {
                 byte[] message = new byte[paquet.getLength()];
                 System.arraycopy(paquet.getData(), paquet.getOffset(), message, 0, paquet.getLength());
 
-                if (MessageUtil.getTypeOfMessage(message) == MessageUtil.TypeMessage.ECHO) {
+                if (MessageUtil.getTypeOfMessage(message) == MessageUtil.TypeMessage.QUITTANCE) {
                     System.out.println("L'élu est toujours en ligne");
                     sleep(3000 + r.nextInt(2000));
                 }
