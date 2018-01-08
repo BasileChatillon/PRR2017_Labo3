@@ -2,29 +2,50 @@ package ch.heigvd;
 
 import java.net.InetAddress;
 
+/**
+ * La classe Site représente toutes le informations utiles pour pouvoir localiser un site. (soit en tout cas son IP
+ * et son numéro de port).
+ * Elle contient également un numéro qui permet de l'identifier.
+ * De plus, nous avons décidé de stocker son aptitude. En effet, celle-ci ne devant pas changer, nous avons trouvé plus
+ * efficace de la calculer une seule fois et de simplement la récupérer quand on en a besoin.
+ */
 public class Site {
-    private int numero;
-    private int aptitude;
-    private InetAddress ip;
-    private int port;
+    private int number; // Le numéro du site
+    private int aptitude; // L'aptitude du site
+    private InetAddress ip; // L'addresse IP du site
+    private int port; // Le port du site
 
-    public Site(int numero, InetAddress ip, int port) {
-        this.numero = numero;
+    // Constructeur
+    public Site(int number, InetAddress ip, int port) {
+        this.number = number;
         this.ip = ip;
         this.port = port;
         this.aptitude = calculateAptitude();
     }
 
+    /**
+     * Function permettant de caculer l'aptitude d'un site selon la consigne.
+     * @return un int étnat l'aptitude du site.
+     */
     private int calculateAptitude(){
         return ip.getAddress()[3] + port;
     }
 
-    public int getNumero() {
-        return numero;
+    /**
+     * Permet de récupérer le dernier byte de l'addresse IP du site. (uitle pour l'aptitude)
+     * @return Le 3ème byte de l'IP
+     */
+    public byte getLastByteOfIp() {
+        return ip.getAddress()[3];
     }
 
-    public void setNumero(int numero) {
-        this.numero = numero;
+    /*** Getter Setter ***/
+    public int getNumber() {
+        return number;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
     }
 
     public int getAptitude() {
@@ -39,9 +60,6 @@ public class Site {
         return ip;
     }
 
-    public byte getLastByteOfIp() {
-        return ip.getAddress()[3];
-    }
     public void setIp(InetAddress ip) {
         this.ip = ip;
     }
@@ -54,7 +72,8 @@ public class Site {
         this.port = port;
     }
 
+    @Override
     public String toString(){
-        return "Site n°" + numero + " : " + ip.toString() + " - port n°" + port + " (aptitude : " + aptitude + ")";
+        return "Site n°" + number + " : " + ip.toString() + " - port n°" + port + " (aptitude : " + aptitude + ")";
     }
 }
