@@ -94,11 +94,10 @@ public class Gestionnaire extends Thread {
                             stageInProgress = StageInProgress.RESULTAT;
                         } else {
                             // Si on est pas dans la liste, la phase de l'annonce est toujours en cours
-                            // On se rajoute à la liste
-                            siteAnnonces.add(me);
-                            // On crée le nouveau message et on l'envoie
-                            byte[] messageAnnonce = MessageUtil.creationAnnonce(siteAnnonces);
+                            // On récupère le vieux message d'annonce et on en reconstruit un à partir de celui-ci
+                            byte[] messageAnnonce = MessageUtil.creationAnnonce(message, me);
                             System.out.println("Gestionnaire:: Election non terminée, on s'ajoute à la liste");
+
                             sendMessage(messageAnnonce);
 
                             stageInProgress = StageInProgress.ANNONCE;
@@ -127,12 +126,14 @@ public class Gestionnaire extends Thread {
                             sendMessage(messageAnnonce);
                             stageInProgress = stageInProgress.ANNONCE;
                         } else if (stageInProgress == StageInProgress.ANNONCE) {
-                            siteElected = elu;
                             // Dans le cas il y a une annonce et qu'on recoit un message de résultat
-                            siteResultat.add(me);
-                            byte[] messageResultat = MessageUtil.creationResultat(elu, siteResultat);
+                            siteElected = elu; // On élit le site
+
+                            // On crée un message de résultat en prenant l'ancien et en s'ajoutant dedans.
+                            byte[] messageResultat = MessageUtil.creationResultat(message, me);
                             System.out.println("Gestionnaire:: Election terminée, annonce du résultat");
                             sendMessage(messageResultat);
+
                             // l'étape est maintenant les résultats
                             stageInProgress = StageInProgress.RESULTAT;
                             synchronized (mutex) {

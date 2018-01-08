@@ -31,44 +31,42 @@ public class MessageUtil {
     /**
      * Permet de créer un message d'Annonce à partir d'un numéro de site
      *
-     * @param numeroSite Le numéro du site
+     * @param siteNumber Le numéro du site
      * @return Un tableau de byte représentant le message
      */
-    public static byte[] creationAnnonce(int numeroSite) {
-        List<Integer> tmp = new ArrayList<>();
-        tmp.add(numeroSite);
-
-        return creationAnnonce(tmp);
-    }
-
-    /**
-     * Permet de créer un message d'annonce à partir d'une liste de numéro de site
-     *
-     * @param numeroSites Les numéros des sites
-     * @return Un tableau de byte représentant le message
-     */
-    public static byte[] creationAnnonce(List<Integer> numeroSites) {
-
+    public static byte[] creationAnnonce(int siteNumber) {
         // On crée un buffer de la bonne taille
-        byte[] message = new byte[1 + 4 * numeroSites.size()];
+        byte[] message = new byte[1];
 
         // Ajout du type de message au début du buffer
         message[0] = TypeMessage.ANNONCE.valueMessage;
 
-        int j = 0;
-        // On parcourt chaque numéro de site et on les ajoute dans le buffer
-        for (int numeroSite : numeroSites) {
+        return creationAnnonce(message, siteNumber);
+    }
 
-            // On utilise un bit shift pour pouvoir récupèrer les 4 bytes de l'int et les insérer un à un dans le buffer
-            for (int i = 3; i > 0; i--) {
-                message[j + i + 1] = (byte) (numeroSite & 0xFF);
-                numeroSite >>= 8;
-            }
+    /**
+     * Permet de créer un message d'Annonce à partir d'un numéro de site et d'un message d'annonce recu.
+     * Il suffit de juste ajouter à la fin du message notre numéro de site
+     *
+     * @param oldMessage Le vieux message d'annonce à réutiliser
+     * @param siteNumber Le numéro du site
+     * @return Un tableau de byte représentant le message
+     */
+    public static byte[] creationAnnonce(byte[] oldMessage, int siteNumber) {
 
-            j += 4;
+        int oldMessageLength = oldMessage.length;
+        byte[] newMessage = new byte[oldMessageLength + 4];
+
+        // Copie du contenu du vieux message dans le nouveau
+        System.arraycopy(oldMessage, 0, newMessage, 0, oldMessageLength);
+
+        // On utilise un bit shift pour pouvoir récupèrer les 4 bytes de l'int et les insérer un à un dans le buffer
+        for (int i = 3; i > 0; i--) {
+            newMessage[oldMessageLength + i] = (byte) (siteNumber & 0xFF);
+            siteNumber >>= 8;
         }
 
-        return message;
+        return newMessage;
     }
 
     /**
@@ -80,22 +78,8 @@ public class MessageUtil {
      * @return Un tableau de byte représentant le message
      */
     public static byte[] creationResultat(int siteElu, int numeroSite) {
-        List<Integer> tmp = new ArrayList<>();
-        tmp.add(numeroSite);
-
-        return creationResultat(siteElu, tmp);
-    }
-
-    /**
-     * Permet de créer un message de résultat à partir d'un site élu ainsi qu'un liste de numéro de site
-     *
-     * @param siteElu     Le site elu par l'élection
-     * @param numeroSites Les sites qui ont vu le message
-     * @return Un tableau de byte représentant le message
-     */
-    public static byte[] creationResultat(int siteElu, List<Integer> numeroSites) {
         // On crée un buffer de la bonne taille
-        byte[] message = new byte[1 + 4 + 4 * numeroSites.size()];
+        byte[] message = new byte[5];
 
         message[0] = TypeMessage.RESULTAT.valueMessage;
 
@@ -105,21 +89,34 @@ public class MessageUtil {
             siteElu >>= 8;
         }
 
-        // Ajout du numéro de chaque site dans le message grâce à un bit shift
-        int j = 1;
-        for (int numeroSite : numeroSites) {
-
-            for (int i = 3; i > 0; i--) {
-                message[j * 4 + i + 1] = (byte) (numeroSite & 0xFF);
-                numeroSite >>= 8;
-            }
-
-            j += 1;
-        }
-
-        return message;
+        return creationResultat(message, numeroSite);
     }
 
+    /**
+     * Permet de créer un message de Résultat à partir d'un numéro de site et d'un message de résultat reçu.
+     * Il suffit de juste ajouter à la fin du message notre numéro de site
+     *
+     * @param oldMessage Le vieux message de résultat à réutiliser
+     * @param siteNumber Le numéro du site
+     * @return Un tableau de byte représentant le message
+     */
+    public static byte[] creationResultat(byte[] oldMessage, int siteNumber) {
+
+        int oldMessageLength = oldMessage.length;
+        // On crée un buffer de la bonne taille
+        byte[] newMessage = new byte[oldMessageLength + 4];
+
+        System.arraycopy(oldMessage, 0, newMessage, 0, oldMessageLength);
+
+        // Ajout du numéro de chaque site dans le message grâce à un bit shift
+        for (int i = 3; i > 0; i--) {
+            newMessage[oldMessageLength + i] = (byte) (siteNumber & 0xFF);
+            siteNumber >>= 8;
+        }
+
+        return newMessage;
+    }
+    
     /**
      * Permet de récupérer depuis un mesage d'Annonce la liste des numéros de tous les sites qui on vu l'annonce
      *
