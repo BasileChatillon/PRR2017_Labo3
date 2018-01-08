@@ -1,7 +1,9 @@
 package ch.heigvd;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -29,33 +31,34 @@ public class MessageUtil {
     }
 
     /**
-     * Permet de créer un message d'Annonce à partir d'un numéro de site
+     * Permet de créer un message d'Annonce à partir d'un numéro de site ainsi que son aptitude
      *
      * @param siteNumber Le numéro du site
      * @return Un tableau de byte représentant le message
      */
-    public static byte[] creationAnnonce(int siteNumber) {
+    public static byte[] creationAnnonce(int siteNumber, int siteAptitude) {
         // On crée un buffer de la bonne taille
         byte[] message = new byte[1];
 
         // Ajout du type de message au début du buffer
         message[0] = TypeMessage.ANNONCE.valueMessage;
 
-        return creationAnnonce(message, siteNumber);
+        return creationAnnonce(message, siteNumber, siteAptitude);
     }
 
     /**
      * Permet de créer un message d'Annonce à partir d'un numéro de site et d'un message d'annonce recu.
-     * Il suffit de juste ajouter à la fin du message notre numéro de site
+     * Il suffit de juste ajouter à la fin du message notre numéro de site ainsi que son aptitude
      *
      * @param oldMessage Le vieux message d'annonce à réutiliser
      * @param siteNumber Le numéro du site
+     * @param siteAptitude l'aptitude du site
      * @return Un tableau de byte représentant le message
      */
-    public static byte[] creationAnnonce(byte[] oldMessage, int siteNumber) {
+    public static byte[] creationAnnonce(byte[] oldMessage, int siteNumber, int siteAptitude) {
 
         int oldMessageLength = oldMessage.length;
-        byte[] newMessage = new byte[oldMessageLength + 4];
+        byte[] newMessage = new byte[oldMessageLength + 8]; // le 8 bient de 4 byte pour le nombre du site et 4 pour l'aptitude
 
         // Copie du contenu du vieux message dans le nouveau
         System.arraycopy(oldMessage, 0, newMessage, 0, oldMessageLength);
@@ -64,6 +67,11 @@ public class MessageUtil {
         for (int i = 3; i > 0; i--) {
             newMessage[oldMessageLength + i] = (byte) (siteNumber & 0xFF);
             siteNumber >>= 8;
+        }
+
+        for (int i = 3; i > 0; i--) {
+            newMessage[oldMessageLength + 4 + i] = (byte) (siteAptitude & 0xFF); // On ajoute 4 de décalage
+            siteAptitude >>= 8;
         }
 
         return newMessage;
@@ -116,31 +124,39 @@ public class MessageUtil {
 
         return newMessage;
     }
-    
+
     /**
-     * Permet de récupérer depuis un mesage d'Annonce la liste des numéros de tous les sites qui on vu l'annonce
+     * Permet de récupérer depuis un mesage d'Annonce la map associant les numéros de site à leur amplitude
      *
      * @param messageAnnonce Le message dont on veut extraire les informations
-     * @return La liste des numéros de site
+     * @return Une map associant des numéros de site à leur amplitude
      */
-    public static List<Integer> extraitAnnonce(byte[] messageAnnonce) {
+    public static Map<Integer, Integer> extraitAnnonce(byte[] messageAnnonce) {
 
         // Le tableau dans lequel on va stocker les sites.
-        List<Integer> result = new ArrayList<>();
+        Map<Integer, Integer> result = new HashMap<>();
+        int siteNumber;
+        int amplitude;
 
         // Calcule du nombre de sites qui on vu l'annonce
-        int numberAnnonce = (messageAnnonce.length - 1) / 4;
+        int numberAnnonce = (messageAnnonce.length - 1) / 8; // On retire le 1 qui est le type de message ensuite on a 2 int ce qui fait 2x4 = 8
 
-        // Parcours du message d'annonce pour récupérer les numéros des différents sites
+        // Parcours du message d'annonce pour récupérer les numéros des différents sites ainsi que leur amplitude
         for (int j = 0; j < numberAnnonce; j++) {
 
-            int numeroSite = 0;
+            siteNumber = 0;
             for (int i = 0; i < 4; i++) {
-                numeroSite <<= 8;
-                numeroSite |= (messageAnnonce[j * 4 + i + 1] & 0xFF);
+                siteNumber <<= 8;
+                siteNumber |= (messageAnnonce[j * 8 + i + 1] & 0xFF);
             }
 
-            result.add(numeroSite);
+            amplitude = 0;
+            for (int i = 0; i < 4; i++) {
+                amplitude <<= 8;
+                amplitude |= (messageAnnonce[j * 8 + i + 5] & 0xFF);
+            }
+
+            result.put(siteNumber, amplitude);
         }
 
         return result;

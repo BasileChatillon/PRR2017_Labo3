@@ -103,13 +103,13 @@ public class App extends Thread {
                 }
             }
         } catch (SocketException e) {
-            System.err.println("Applicatif:: Echeq de la création du socker pour le site n°" + number);
+            System.err.println("Applicatif:: Echec de la création du socket pour le site n°" + number);
             e.printStackTrace();
         }
     }
 
     /**
-     * Fonction qui permet de récuprer tous les sites contenu dans le ficher site.properties.
+     * Fonction qui permet de récupérer tous les sites contenus dans le ficher site.properties.
      * @return La liste des sites.
      */
     private List<Site> getAllSite() {
