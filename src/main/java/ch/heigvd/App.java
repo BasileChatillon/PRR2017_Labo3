@@ -1,6 +1,10 @@
 package ch.heigvd;
 
+import ch.heigvd.util.Message;
+import ch.heigvd.util.TypeMessage;
+
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
 import java.util.ArrayList;
@@ -12,6 +16,8 @@ import java.util.Random;
  * Hello world!
  */
 public class App extends Thread {
+    private final String propertiesFileName = "site.properties";
+
     private int numero;
     private Site elu;
 
@@ -31,14 +37,23 @@ public class App extends Thread {
 
         this.numero = Integer.parseInt(args[0]);
 
-        List<Site> sites = getAllSite();
+        Properties properties = new Properties();
+        try {
+            properties = getSiteProperties();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        List<Site> sites = getAllSite(properties);
+        int timeOutQuittance = getTimeOutQuittance(properties);
 
         System.out.println("App: affichage des sites");
         for (Site site : sites) {
             System.out.println(site);
         }
 
-        gestionnaire = new Gestionnaire(sites, numero);
+        gestionnaire = new Gestionnaire(sites, numero, timeOutQuittance);
         gestionnaire.start();
 
     }
@@ -68,7 +83,7 @@ public class App extends Thread {
                     continue;
                 }
                 System.out.println("Applicatif:: Création du Ping");
-                byte[] messagePing = MessageUtil.creationPing();
+                byte[] messagePing = Message.createPing();
                 paquet = new DatagramPacket(messagePing, messagePing.length, elu.getIp(), elu.getPort());
 
                 socket.send(paquet);
@@ -84,7 +99,7 @@ public class App extends Thread {
                 byte[] message = new byte[paquet.getLength()];
                 System.arraycopy(paquet.getData(), paquet.getOffset(), message, 0, paquet.getLength());
 
-                if (MessageUtil.getTypeOfMessage(message) == MessageUtil.TypeMessage.QUITTANCE) {
+                if (Message.getTypeOfMessage(message) == TypeMessage.QUITTANCE) {
                     System.out.println("L'élu est toujours en ligne");
                     sleep(3000 + r.nextInt(2000));
                 }
@@ -98,46 +113,55 @@ public class App extends Thread {
         }
     }
 
-    private List<Site> getAllSite() {
-        List<Site> sites = new ArrayList<Site>();
+    private List<Site> getAllSite(Properties properties) {
+        List<Site> sites = new ArrayList<>();
 
-        InputStream inputStream;
+
+        // get the property value and print it out
+        String number_site = properties.getProperty("number_site");
+        System.out.println(number_site);
+
+        String siteAddress;
+        InetAddress siteIP;
+        int sitePort;
 
         try {
-            Properties prop = new Properties();
-            String propFileName = "site.properties";
-
-            inputStream = getClass().getClassLoader().getResourceAsStream(propFileName);
-
-            if (inputStream != null) {
-                prop.load(inputStream);
-            } else {
-                throw new FileNotFoundException("property file '" + propFileName + "' not found in the classpath");
-            }
-
-            // get the property value and print it out
-            String number_site = prop.getProperty("number_site");
-            System.out.println(number_site);
-
-            String siteAddress;
-            InetAddress siteIP;
-            int sitePort;
-
             for (int i = 0; i < Integer.parseInt(number_site); ++i) {
-                siteAddress = prop.getProperty(String.valueOf(i));
+                siteAddress = properties.getProperty(String.valueOf(i));
                 String[] values = siteAddress.split(":");
                 siteIP = InetAddress.getByName(values[0]);
                 sitePort = Integer.parseInt(values[1]);
                 sites.add(new Site(i, siteIP, sitePort));
             }
-
-            inputStream.close();
-
         } catch (Exception e) {
             System.out.println("Exception: " + e);
         }
 
         return sites;
+    }
+
+    private int getTimeOutQuittance(Properties properties) {
+        int timeOutQuittance = 100;
+        InputStream inputStream;
+
+        // get the property value and print it out
+        String timeOutQuittanceString = properties.getProperty("TIMEOUT_QUITTANCE");
+        timeOutQuittance = Integer.parseInt(timeOutQuittanceString);
+
+        return timeOutQuittance;
+    }
+
+    private Properties getSiteProperties() throws IOException {
+        Properties prop = new Properties();
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(propertiesFileName);
+
+        if (inputStream != null) {
+            prop.load(inputStream);
+        } else {
+            throw new FileNotFoundException("property file '" + propertiesFileName + "' not found in the classpath");
+        }
+
+        return prop;
     }
 
     public static void main(String[] args) {

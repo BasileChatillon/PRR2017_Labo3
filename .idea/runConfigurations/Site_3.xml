@@ -2,7 +2,7 @@
   <configuration default="false" name="Site 3" type="Application" factoryName="Application">
     <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea">
       <pattern>
-        <option name="PATTERN" value="ch.heigvd.*" />
+        <option name="PATTERN" value="ch.heigvd.util.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>
