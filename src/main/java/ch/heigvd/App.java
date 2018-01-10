@@ -25,7 +25,7 @@ public class App extends Thread {
     Random random;
 
     /**
-     * Constructeur qui permet d'initialiser le gestionaire ainsi que les différents éléments nécessaires au bon
+     * Constructeur qui permet d'initialiser le gestionnaire ainsi que les différents éléments nécessaires au bon
      * fonctionnement du thread
      *
      * @param args Le numéro du site
@@ -50,7 +50,7 @@ public class App extends Thread {
             System.exit(1);
         }
 
-        // Extraction d'infos depuis les propiétés
+        // Extraction d'infos depuis les propriétés
         List<Site> sites = getAllSite(properties);
         int timeOutQuittance = getTimeOutQuittance(properties);
         int timeOutElection = getTimeOutElection(properties);
@@ -67,13 +67,13 @@ public class App extends Thread {
 
     /**
      * Le thread va de temps en temps récupérer l'élu et tenter de le contacter pour voir s'il est en ligne.
-     * Si ce n'est pas le cas, il va lancer une nouvelle élection
-     * S'il est en ligne, il attendra avant de le contacter à nouveau
+     * Si ce n'est pas le cas, il va lancer une nouvelle élection.
+     * S'il est en ligne, il attendra avant de le contacter à nouveau.
      */
     public void run() {
         final int MIN_TIME_SLEEPING = 5000;
         final int MAX_TIME_SLEEPING = 8000;
-        System.out.println("Applicatif:: démarage des permières élections");
+        System.out.println("Applicatif:: démarrage des peremières élections");
 
         gestionnaireElection.startElection();
 
@@ -83,16 +83,16 @@ public class App extends Thread {
         byte[] messageResponsePing;
 
         try {
-            System.out.println("Applicatif:: Création du socket de récéption pour le site n°" + number);
+            System.out.println("Applicatif:: Création du socket de réception pour le site n°" + number);
             socketPing = new DatagramSocket();
 
             while (true) {
-                System.out.println("Applicatif:: récupération de l'élu");
+                System.out.println("Applicatif:: Récupération de l'élu");
                 electedSite = gestionnaireElection.getElu();
                 System.out.println("Applicatif:: L'élu est : " + electedSite.getNumber());
 
                 try {
-                    // Dans le cas ou nous sommes l'élu, on attend simplement un moment et on recommence
+                    // Dans le cas où nous sommes l'élu, on attend simplement un moment et on recommence
                     if (electedSite.getNumber() == number) {
                         sleep(MIN_TIME_SLEEPING + random.nextInt(MAX_TIME_SLEEPING - MIN_TIME_SLEEPING));
                         continue;
@@ -108,7 +108,7 @@ public class App extends Thread {
                     packetPing = new DatagramPacket(new byte[1], 1);
 
                     // On pose une limite de temps sur la réception du reçu pour permettre de vérifier si l'élu est en ligne
-                    System.out.println("Applicatif:: récupération de l'écho");
+                    System.out.println("Applicatif:: Récupération de l'écho");
                     socketPing.setSoTimeout(200);
                     socketPing.receive(packetPing);
 
@@ -116,7 +116,7 @@ public class App extends Thread {
                     messageResponsePing = new byte[packetPing.getLength()];
                     System.arraycopy(packetPing.getData(), packetPing.getOffset(), messageResponsePing, 0, packetPing.getLength());
 
-                    // ON vérifie églaement que le message envoyé par l'élu est bien une quittance
+                    // On vérifie également que le message envoyé par l'élu est bien une quittance
                     if (Message.getTypeOfMessage(messageResponsePing) == TypeMessage.QUITTANCE) {
                         System.out.println("L'élu est toujours en ligne");
                         sleep(MIN_TIME_SLEEPING + random.nextInt(MAX_TIME_SLEEPING - MIN_TIME_SLEEPING));
@@ -124,7 +124,7 @@ public class App extends Thread {
 
                 } catch (SocketTimeoutException e) {
                     // Si on a pas reçu la quittance à temps, on lance une élection
-                    System.out.println("Applicatif:: l'élu est hs, démarrage d'élections");
+                    System.out.println("Applicatif:: L'élu est HS, démarrage d'élections");
                     gestionnaireElection.startElection();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -137,7 +137,7 @@ public class App extends Thread {
     }
 
     /**
-     * Fonction qui permet de récuprer tous les sites contenu dans le ficher site.properties.
+     * Fonction qui permet de récupérer tous les sites contenu dans le ficher site.properties.
      *
      * @param properties L'instance de properties dans laquelle sont stockées les différentes propriétés à récupérer
      * @return La liste des sites.
@@ -176,7 +176,6 @@ public class App extends Thread {
      * @return La valeur en milliseconde du timeOut
      */
     private int getTimeOutQuittance(Properties properties) {
-        // get the property value and print it out
         String timeOutQuittanceString = properties.getProperty("TIMEOUT_QUITTANCE");
         return Integer.parseInt(timeOutQuittanceString);
     }
@@ -188,7 +187,6 @@ public class App extends Thread {
      * @return La valeur en milliseconde du timeOut
      */
     private int getTimeOutElection(Properties properties) {
-        // get the property value and print it out
         String timeOutElectionString = properties.getProperty("TIMEOUT_ELECTION");
         return Integer.parseInt(timeOutElectionString);
     }

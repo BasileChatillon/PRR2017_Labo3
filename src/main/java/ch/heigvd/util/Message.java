@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Classe qui regroupe et implémente les diffréntes méthodes utiles à la création de message ou à la lecture des
- * messages échangés dans la procdéure.
+ * Classe qui regroupe et implémente les différentes méthodes utiles à la création de message ou à la lecture des
+ * messages échangés dans la procédure.
  */
 public class Message {
     /**
@@ -32,13 +32,15 @@ public class Message {
      *
      * @param oldMessage   Le vieux message d'annonce à réutiliser
      * @param siteNumber   Le numéro du site
-     * @param siteAptitude l'aptitude du site
+     * @param siteAptitude L'aptitude du site
      * @return Un tableau de byte représentant le message
      */
     public static byte[] createAnnonce(byte[] oldMessage, int siteNumber, int siteAptitude) {
 
         int oldMessageLength = oldMessage.length;
-        byte[] newMessage = new byte[oldMessageLength + 8]; // le 8 bient de 4 byte pour le nombre du site et 4 pour l'aptitude
+
+        // Taille de l'ancien message + 4 bytes pour le numéro de site + 4 bytes pour l'aptitude d'un site
+        byte[] newMessage = new byte[oldMessageLength + 8];
 
         // Copie du contenu du vieux message dans le nouveau
         System.arraycopy(oldMessage, 0, newMessage, 0, oldMessageLength);
@@ -61,7 +63,7 @@ public class Message {
      * Permet de créer un message de résultat (selon le protocole). Il contiendra en premier le site élu puis le site
      * ayant vu le message
      *
-     * @param siteElu    Le site elu par l'élection
+     * @param siteElu    Le site élu par l'élection
      * @param numeroSite Le site qui crée le message de résultat
      * @return Un tableau de byte représentant le message
      */
@@ -119,7 +121,8 @@ public class Message {
         int amplitude;
 
         // Calcule du nombre de sites qui on vu l'annonce
-        int numberAnnonce = (messageAnnonce.length - 1) / 8; // On retire le 1 qui est le type de message ensuite on a 2 int ce qui fait 2x4 = 8
+        // On retire le 1 qui est le type de message ensuite on a 2 int ce qui fait 2x4 = 8
+        int numberAnnonce = (messageAnnonce.length - 1) / 8;
 
         // Parcours du message d'annonce pour récupérer les numéros des différents sites ainsi que leur amplitude
         for (int j = 0; j < numberAnnonce; j++) {
@@ -143,7 +146,7 @@ public class Message {
     }
 
     /**
-     * Permet de récupérer depuis un mesage de résultat le numéro du site élu lors de l'élection
+     * Permet de récupérer depuis un message de résultat le numéro du site élu lors de l'élection
      *
      * @param messageResultat Le message dont on veut extraire les informations
      * @return Le numéro du site élu
@@ -216,7 +219,7 @@ public class Message {
     /**
      * Récupère le type du message
      *
-     * @param message Le message dont on veut récupéré le type
+     * @param message Le message dont on veut récupérer le type
      * @return Le type du message
      */
     public static TypeMessage getTypeOfMessage(byte[] message) {

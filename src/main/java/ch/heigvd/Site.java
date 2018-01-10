@@ -3,16 +3,17 @@ package ch.heigvd;
 import java.net.InetAddress;
 
 /**
- * La classe Site représente toutes le informations utiles pour pouvoir localiser un site. (soit en tout cas son IP
+ * La classe Site représente toutes le informations utiles pour pouvoir localiser un site. (en tout cas son IP
  * et son numéro de port).
  * Elle contient également un numéro qui permet de l'identifier.
- * De plus, nous avons décidé de stocker son aptitude. En effet, celle-ci ne devant pas changer, nous avons trouvé plus
- * efficace de la calculer une seule fois et de simplement la récupérer quand on en a besoin.
+ * De plus, nous avons décidé de stocker son aptitude. En effet, dans le cadre de ce labo, celle-ci ne devant
+ * pas changer, nous avons trouvé plus efficace de la calculer une seule fois et de simplement
+ * la récupérer quand on en a besoin.
  */
 public class Site {
     private int number; // Le numéro du site
     private int aptitude; // L'aptitude du site
-    private InetAddress ip; // L'addresse IP du site
+    private InetAddress ip; // L'adresse IP du site
     private int port; // Le port du site
 
     // Constructeur
@@ -24,7 +25,7 @@ public class Site {
     }
 
     /**
-     * Function permettant de caculer l'aptitude d'un site selon la consigne.
+     * Fonction permettant de calculer l'aptitude d'un site selon la consigne.
      *
      * @return un int étnat l'aptitude du site.
      */
@@ -33,7 +34,7 @@ public class Site {
     }
 
     /**
-     * Permet de récupérer le dernier byte de l'addresse IP du site. (uitle pour l'aptitude)
+     * Permet de récupérer le dernier byte de l'addresse IP du site. (utile pour l'aptitude)
      *
      * @return Le 3ème byte de l'IP
      */
