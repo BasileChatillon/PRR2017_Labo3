@@ -1,3 +1,19 @@
+/**
+ * Basile Châtillon & Nicolas Rod
+ *
+ * --- Conception ---
+ * Quels sont les différents threads
+ * Comment ils communiquent entre eux + avec quel type de message
+ * Traitement des quittances
+ *
+ * --- Tests ---
+ * Comment faire pour tester que ça marche (sans panne)
+ * Différents type de panne
+ * Comment on a simulé les différents types de pannes
+ */
+
+
+
 package ch.heigvd;
 
 import ch.heigvd.util.Message;
