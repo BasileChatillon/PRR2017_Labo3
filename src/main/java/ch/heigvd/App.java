@@ -1,6 +1,7 @@
 package ch.heigvd;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
 import java.util.ArrayList;
@@ -10,6 +11,9 @@ import java.util.Random;
 
 
 public class App extends Thread {
+
+    private final String propertiesFileName = "site.properties";
+
     private int number;
     private Site electedSite;
 
@@ -32,14 +36,23 @@ public class App extends Thread {
         this.number = Integer.parseInt(args[0]);
         this.random = new Random();
 
-        List<Site> sites = getAllSite();
+        Properties properties = new Properties();
+        try {
+            properties = getSiteProperties();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        List<Site> sites = getAllSite(properties);
+        int timeOutQuittance = getTimeOutQuittance(properties);
 
         System.out.println("App: affichage des sites");
         for (Site site : sites) {
             System.out.println(site);
         }
 
-        gestionnaire = new Gestionnaire(sites, number);
+        gestionnaire = new Gestionnaire(sites, number, timeOutQuittance);
         gestionnaire.start();
     }
 
@@ -49,6 +62,7 @@ public class App extends Thread {
      */
     public void run() {
         System.out.println("Applicatif:: démarage des permières élections");
+
         gestionnaire.statElection();
 
         DatagramSocket socketPing;
@@ -109,51 +123,49 @@ public class App extends Thread {
         }
     }
 
-    /**
-     * Fonction qui permet de récupérer tous les sites contenus dans le ficher site.properties.
-     * @return La liste des sites.
-     */
-    private List<Site> getAllSite() {
+    private List<Site> getAllSite(Properties properties) {
         List<Site> sites = new ArrayList<>();
 
-        InputStream inputStream;
+        // get the property value and print it out
+        String number_site = properties.getProperty("totalSiteNumber");
+        System.out.println(number_site);
+
+        String siteAddress;
+        InetAddress siteIP;
+        int sitePort;
 
         try {
-            Properties prop = new Properties();
-            String propFileName = "site.properties";
-            // On va aller scanner le fichier site.properties pour récupérer les informations qui sont dedans
-            inputStream = getClass().getClassLoader().getResourceAsStream(propFileName);
-
-            if (inputStream != null) {
-                prop.load(inputStream);
-            } else {
-                throw new FileNotFoundException("property file '" + propFileName + "' not found in the classpath");
+            for (int i = 0; i < Integer.parseInt(number_site); ++i) {
+                siteAddress = properties.getProperty(String.valueOf(i));
+                String[] values = siteAddress.split(":");
+                siteIP = InetAddress.getByName(values[0]);
+                sitePort = Integer.parseInt(values[1]);
+                sites.add(new Site(i, siteIP, sitePort));
             }
-
-            // On récupère le nombre de site, qu'on affiche
-            String totalSiteNumber = prop.getProperty("totalSiteNumber");
-            System.out.println("Nombre de site total" + totalSiteNumber);
-
-            String adressSite;
-            InetAddress ipSite;
-            int portSite;
-
-            // On parcourt ensuite tous les sites pour récupérer leurs informations et les stocker
-            for (int i = 0; i < Integer.parseInt(totalSiteNumber); ++i) {
-                adressSite = prop.getProperty(String.valueOf(i));
-                String[] values = adressSite.split(":");
-                ipSite = InetAddress.getByName(values[0]);
-                portSite = Integer.parseInt(values[1]);
-                sites.add(new Site(i, ipSite, portSite));
-            }
-
-            inputStream.close();
-
         } catch (Exception e) {
             System.out.println("Exception: " + e);
         }
 
         return sites;
+    }
+
+    private int getTimeOutQuittance(Properties properties) {
+        // get the property value and print it out
+        String timeOutQuittanceString = properties.getProperty("TIMEOUT_QUITTANCE");
+        return Integer.parseInt(timeOutQuittanceString);
+    }
+
+    private Properties getSiteProperties() throws IOException {
+        Properties properties = new Properties();
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(propertiesFileName);
+
+        if (inputStream != null) {
+            properties.load(inputStream);
+        } else {
+            throw new FileNotFoundException("property file '" + propertiesFileName + "' not found in the classpath");
+        }
+
+        return properties;
     }
 
     public static void main(String[] args) {

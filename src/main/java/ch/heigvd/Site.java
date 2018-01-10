@@ -25,14 +25,16 @@ public class Site {
 
     /**
      * Function permettant de caculer l'aptitude d'un site selon la consigne.
+     *
      * @return un int étnat l'aptitude du site.
      */
-    private int calculateAptitude(){
+    private int calculateAptitude() {
         return ip.getAddress()[3] + port;
     }
 
     /**
      * Permet de récupérer le dernier byte de l'addresse IP du site. (uitle pour l'aptitude)
+     *
      * @return Le 3ème byte de l'IP
      */
     public byte getLastByteOfIp() {
@@ -73,7 +75,7 @@ public class Site {
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         return "Site n°" + number + " : " + ip.toString() + " - port n°" + port + " (aptitude : " + aptitude + ")";
     }
 }

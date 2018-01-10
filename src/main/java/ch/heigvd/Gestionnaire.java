@@ -1,5 +1,7 @@
 package ch.heigvd;
 
+import ch.heigvd.util.Message;
+
 import java.io.IOException;
 import java.net.*;
 import java.util.List;
@@ -21,6 +23,7 @@ public class Gestionnaire extends Thread {
 
     private int numberSiteTot; // le nombre de site dans l'anneau
 
+    private final int TIMEOUT_QUITTANCE;
     private int myAptitude; // La valeur de mon aptitude
     private int me, // Notre numéro de site
             neighbor, // le site se trouvant après nous, soit celui à qui ont doit envoyer les messages
@@ -29,13 +32,14 @@ public class Gestionnaire extends Thread {
     private DatagramSocket socketReception; // Le socket qui va permettre la récéption des messages venant des autres sites
     private Object mutex; // le mutex qui permet d'éviter que l'applicatif accède à l'élu lorsqu'il n'est pas encore élu
 
-    Gestionnaire(List<Site> sites, int me) {
+    Gestionnaire(List<Site> sites, int me, int TIMEOUT_QUITTANCE) {
         this.sites = sites;
         this.me = me;
         this.neighbor = (me + 1) % sites.size();
         this.myAptitude = sites.get(me).getAptitude();
         this.mutex = new Object();
         this.numberSiteTot = sites.size();
+        this.TIMEOUT_QUITTANCE = TIMEOUT_QUITTANCE;
 
         this.stageInProgress = StageInProgress.FINI;
 
@@ -64,17 +68,19 @@ public class Gestionnaire extends Thread {
                 byte[] message = new byte[packetReceived.getLength()];
                 System.arraycopy(packetReceived.getData(), packetReceived.getOffset(), message, 0, packetReceived.getLength());
 
-                switch (MessageUtil.getTypeOfMessage(message)) {
+                switch (Message.getTypeOfMessage(message)) {
                     case ANNONCE:
                         // On commence par envoyer la quittance à l'émetteur du message
                         sendQuittance(packetReceived.getAddress(), packetReceived.getPort());
 
                         System.out.println("Gestionnaire:: Reception d'un message d'annonce");
                         // on récupère les site qui ont émis une annonce
+
                         Map<Integer, Integer> siteAnnonces = MessageUtil.extraitAnnonce(message);
 
                         if (siteAnnonces.containsKey(me)) {
                             System.out.println("Gestionnaire:: Fin de la boucle, on détermine l'élu");
+
                             // On récupère le site qui à la meilleur atptitude et ensuite par rapport à l'IP
                             siteElected = siteAnnonces.entrySet().stream()
                                     .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed()
@@ -110,7 +116,7 @@ public class Gestionnaire extends Thread {
 
                         System.out.println("Gestionnaire:: Reception d'un message de résultat");
                         List<Integer> siteResult = MessageUtil.extraitSitesResultat(message);
-                        int elu = MessageUtil.extraitEluResultat(message);
+                        int elu = Message.extractElectedFromResult(message);
 
                         if (siteResult.contains(me)) {
                             // Si le résultat à fait le tour de l'anneau, alors on est dans la liste et le siteElected est le bon
@@ -123,6 +129,7 @@ public class Gestionnaire extends Thread {
                             // Il y a une erreur alors on relance une élection
                             byte[] messageAnnonce = MessageUtil.creationAnnonce(me, myAptitude);
                             System.out.println("Gestionnaire:: On recommence une élection");
+
                             sendMessage(messageAnnonce);
 
                             stageInProgress = stageInProgress.ANNONCE;
@@ -161,7 +168,7 @@ public class Gestionnaire extends Thread {
      * @param port Le port du site de destination
      */
     private void sendQuittance(InetAddress ip, int port) {
-        byte[] message = MessageUtil.creationQuittance();
+        byte[] message = Message.createQuittance();
         DatagramPacket packetQuittance = new DatagramPacket(message, message.length, ip, port);
 
         try {
@@ -246,6 +253,7 @@ public class Gestionnaire extends Thread {
      */
     public void statElection() {
         System.out.println("Gestionnaire:: début des élections");
+
         stageInProgress = StageInProgress.ANNONCE;
         byte[] message = MessageUtil.creationAnnonce(me, myAptitude);
 

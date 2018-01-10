@@ -50,8 +50,8 @@ public class MessageUtil {
      * Permet de créer un message d'Annonce à partir d'un numéro de site et d'un message d'annonce recu.
      * Il suffit de juste ajouter à la fin du message notre numéro de site ainsi que son aptitude
      *
-     * @param oldMessage Le vieux message d'annonce à réutiliser
-     * @param siteNumber Le numéro du site
+     * @param oldMessage   Le vieux message d'annonce à réutiliser
+     * @param siteNumber   Le numéro du site
      * @param siteAptitude l'aptitude du site
      * @return Un tableau de byte représentant le message
      */
