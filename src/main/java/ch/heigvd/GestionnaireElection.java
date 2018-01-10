@@ -85,7 +85,7 @@ public class GestionnaireElection extends Thread {
                         // On commence par envoyer la quittance à l'émetteur du message
                         sendQuittance(packetReceived.getAddress(), packetReceived.getPort());
 
-                        if (me == 1) {
+                        if (me == 3) {
                             int i = 1 / 0;
                         }
                         System.out.println("GestionnaireElection:: Reception d'un message d'annonce");
@@ -289,6 +289,7 @@ public class GestionnaireElection extends Thread {
                 try {
                     mutex.wait(TIMEOUT_ELECTION);
                     if (stageInProgress == StageInProgress.ANNONCE) {
+                        System.out.println("GestionnaireElection:: Election bloqueé, on en recommence une");
                         startElection();
                     }
                 } catch (InterruptedException e) {
