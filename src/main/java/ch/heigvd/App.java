@@ -15,7 +15,7 @@ public class App extends Thread {
 
     private Gestionnaire gestionnaire;
 
-    Random r;
+    Random random;
 
     /**
      * Constructeur qui permet d'initialiser le gestionaire ainsi que les différents éléments nécessaires au bon
@@ -30,7 +30,7 @@ public class App extends Thread {
         }
 
         this.number = Integer.parseInt(args[0]);
-        this.r = new Random();
+        this.random = new Random();
 
         List<Site> sites = getAllSite();
 
@@ -52,12 +52,13 @@ public class App extends Thread {
         gestionnaire.statElection();
 
         DatagramSocket socketPing;
+        DatagramPacket packetPing;
+        byte[] messagePing;
+        byte[] messageResponsePing;
 
         try {
             System.out.println("Applicatif:: Création du socket de récéption pour le site n°" + number);
             socketPing = new DatagramSocket();
-
-            DatagramPacket packetPing;
 
             while (true) {
                 System.out.println("Applicatif:: récupération de l'élu");
@@ -67,12 +68,12 @@ public class App extends Thread {
                 try {
                     // Dans le cas ou nous sommes l'élu, on attend simplement un moment et on recommence
                     if (electedSite.getNumber() == number) {
-                        sleep(3000 + r.nextInt(2000));
+                        sleep(3000 + random.nextInt(2000));
                         continue;
                     }
 
                     System.out.println("Applicatif:: Création du Ping");
-                    byte[] messagePing = MessageUtil.creationPing();
+                    messagePing = MessageUtil.creationPing();
                     packetPing = new DatagramPacket(messagePing, messagePing.length, electedSite.getIp(), electedSite.getPort());
 
                     socketPing.send(packetPing);
@@ -86,12 +87,12 @@ public class App extends Thread {
                     socketPing.receive(packetPing);
 
                     // Si on a reçu la réponse à temps, alors on vérifie que c'est bien une quittance
-                    byte[] message = new byte[packetPing.getLength()];
-                    System.arraycopy(packetPing.getData(), packetPing.getOffset(), message, 0, packetPing.getLength());
+                    messageResponsePing = new byte[packetPing.getLength()];
+                    System.arraycopy(packetPing.getData(), packetPing.getOffset(), messageResponsePing, 0, packetPing.getLength());
 
-                    if (MessageUtil.getTypeOfMessage(message) == MessageUtil.TypeMessage.QUITTANCE) {
+                    if (MessageUtil.getTypeOfMessage(messageResponsePing) == MessageUtil.TypeMessage.QUITTANCE) {
                         System.out.println("L'élu est toujours en ligne");
-                        sleep(3000 + r.nextInt(2000));
+                        sleep(3000 + random.nextInt(2000));
                     }
 
                 } catch (SocketTimeoutException e) {
