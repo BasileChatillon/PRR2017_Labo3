@@ -63,7 +63,7 @@ public class App extends Thread {
     public void run() {
         System.out.println("Applicatif:: démarage des permières élections");
 
-        gestionnaire.statElection();
+        gestionnaire.startElection();
 
         DatagramSocket socketPing;
         DatagramPacket packetPing;
@@ -112,7 +112,7 @@ public class App extends Thread {
                 } catch (SocketTimeoutException e) {
                     // Si on a pas reçu la quittance à temps, on lance une élection
                     System.out.println("Applicatif:: l'élu est hs, démarrage d'élections");
-                    gestionnaire.statElection();
+                    gestionnaire.startElection();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }

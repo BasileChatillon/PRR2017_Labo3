@@ -251,7 +251,7 @@ public class Gestionnaire extends Thread {
     /**
      * Permet de commencer les éléctions en envoyant un message d'annonce
      */
-    public void statElection() {
+    public void startElection() {
         System.out.println("Gestionnaire:: début des élections");
 
         stageInProgress = StageInProgress.ANNONCE;
@@ -268,10 +268,14 @@ public class Gestionnaire extends Thread {
      */
     public Site getElu() {
         // On vérifie qu'on est pas en train de faire une annonce avant de récupérér les infos du site
-        if (stageInProgress == StageInProgress.ANNONCE) {
+
+        while (stageInProgress == StageInProgress.ANNONCE) {
             synchronized (mutex) {
                 try {
-                    mutex.wait();
+                    mutex.wait(2000);
+                    if(stageInProgress == StageInProgress.ANNONCE){
+                        startElection();
+                    }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     System.err.println("Gestionnaire:: Problème dans la gestion du mutex");
