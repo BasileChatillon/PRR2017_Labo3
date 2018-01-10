@@ -41,37 +41,22 @@ public class Site {
         return ip.getAddress()[3];
     }
 
-    /*** Getter Setter ***/
+
+    /************ Setter ************/
     public int getNumber() {
         return number;
-    }
-
-    public void setNumber(int number) {
-        this.number = number;
     }
 
     public int getAptitude() {
         return aptitude;
     }
 
-    public void setAptitude(int aptitude) {
-        this.aptitude = aptitude;
-    }
-
     public InetAddress getIp() {
         return ip;
     }
 
-    public void setIp(InetAddress ip) {
-        this.ip = ip;
-    }
-
     public int getPort() {
         return port;
-    }
-
-    public void setPort(int port) {
-        this.port = port;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package ch.heigvd;
 
 import ch.heigvd.util.Message;
+import ch.heigvd.util.TypeMessage;
 
 import java.io.IOException;
 import java.net.*;
@@ -8,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class Gestionnaire extends Thread {
+public class GestionnaireElection extends Thread {
     /**
      * Un enum qui premet de définir l'étape en cours
      */
@@ -18,36 +19,47 @@ public class Gestionnaire extends Thread {
         FINI;
     }
 
-    private StageInProgress stageInProgress; // l'étape en cours
     private List<Site> sites; // Une Liste contenant tous les sites existant dans l'anneau
-
     private int numberSiteTot; // le nombre de site dans l'anneau
 
-    private final int TIMEOUT_QUITTANCE;
-    private int myAptitude; // La valeur de mon aptitude
     private int me, // Notre numéro de site
             neighbor, // le site se trouvant après nous, soit celui à qui ont doit envoyer les messages
             siteElected; // Le site qui sera élu
 
-    private DatagramSocket socketReception; // Le socket qui va permettre la récéption des messages venant des autres sites
+    private int myAptitude; // La valeur de mon aptitude
+
+    private final int TIMEOUT_QUITTANCE;
+    private final int TIMEOUT_ELECTION;
+
+    private StageInProgress stageInProgress; // l'étape en cours
     private Object mutex; // le mutex qui permet d'éviter que l'applicatif accède à l'élu lorsqu'il n'est pas encore élu
 
-    Gestionnaire(List<Site> sites, int me, int TIMEOUT_QUITTANCE) {
+
+    private DatagramSocket socketReception; // Le socket qui va permettre la réception des messages venant des autres sites
+
+
+    GestionnaireElection(List<Site> sites, int me, int TIMEOUT_QUITTANCE, int TIMEOUT_ELECTION) {
         this.sites = sites;
-        this.me = me;
-        this.neighbor = (me + 1) % sites.size();
-        this.myAptitude = sites.get(me).getAptitude();
-        this.mutex = new Object();
         this.numberSiteTot = sites.size();
+
+        this.me = me;
+        this.neighbor = (me + 1) % sites.size(); // permet de récupérer le voisin suivant
+        this.siteElected = me; // C'est une sécurité pour si jamais le mutex ne marcherait pas bien
+
+        this.myAptitude = sites.get(me).getAptitude();
+
         this.TIMEOUT_QUITTANCE = TIMEOUT_QUITTANCE;
+        this.TIMEOUT_ELECTION = TIMEOUT_ELECTION;
 
         this.stageInProgress = StageInProgress.FINI;
+        this.mutex = new Object();
 
         try {
-            System.out.println("Gestionnaire:: Création du socketReception de récéption pour le site n°" + me);
+            System.out.println("GestionnaireElection:: Création du socketReception de réception pour le site n°" + me);
+            // Ouvture du socket qui permettra au gestionnaire de recevoir des messages
             socketReception = new DatagramSocket(sites.get(me).getPort());
         } catch (SocketException e) {
-            System.err.println("Gestionnaire:: Echeck de la création du socker pour le site n°" + me);
+            System.err.println("GestionnaireElection:: Echeck de la création du socker pour le site n°" + me);
             e.printStackTrace();
         }
     }
@@ -55,12 +67,12 @@ public class Gestionnaire extends Thread {
     @Override
     public void run() {
         while (true) {
-            // la taille du tampon est le plus long message possible, soit quand tous les sites on répondu à l'annonce.
+            // La taille du tampon est la taille du plus long message possible, soit quand tous les sites ont répondu à l'annonce.
             int sizeMessageMax = 1 + 2 * 4 * numberSiteTot;
 
             DatagramPacket packetReceived = new DatagramPacket(new byte[sizeMessageMax], sizeMessageMax);
 
-            // attente de récéption d'un message
+            // Attente de réception d'un message
             try {
                 socketReception.receive(packetReceived);
 
@@ -73,15 +85,19 @@ public class Gestionnaire extends Thread {
                         // On commence par envoyer la quittance à l'émetteur du message
                         sendQuittance(packetReceived.getAddress(), packetReceived.getPort());
 
-                        System.out.println("Gestionnaire:: Reception d'un message d'annonce");
-                        // on récupère les site qui ont émis une annonce
-
-                        Map<Integer, Integer> siteAnnonces = MessageUtil.extraitAnnonce(message);
+                        if (me == 1) {
+                            int i = 1 / 0;
+                        }
+                        System.out.println("GestionnaireElection:: Reception d'un message d'annonce");
+                        // on récupère les site qui ont émis une annonce en les mappant avec leur aptitude
+                        Map<Integer, Integer> siteAnnonces = Message.extractAnnonce(message);
 
                         if (siteAnnonces.containsKey(me)) {
-                            System.out.println("Gestionnaire:: Fin de la boucle, on détermine l'élu");
+                            System.out.println("GestionnaireElection:: Fin de la boucle, on détermine l'élu");
 
                             // On récupère le site qui à la meilleur atptitude et ensuite par rapport à l'IP
+                            // On va les trier dans un premier temps en fonction de celui qui a la plus grande aptitude
+                            // Puis en fonction de celui qui a la plus petite IP en cas d'égalité
                             siteElected = siteAnnonces.entrySet().stream()
                                     .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed()
                                             .thenComparing(u -> sites.get(u.getKey()).getLastByteOfIp()))
@@ -90,19 +106,18 @@ public class Gestionnaire extends Thread {
                                     .collect(Collectors.toList())
                                     .get(0);
 
-                            // On commence à envoyer les résultats
-                            // On prépare le message
-                            byte[] messageResult = MessageUtil.creationResultat(siteElected, me);
-                            System.out.println("Gestionnaire:: Election terminée, le site elu est " + siteElected);
+                            // On prépare le message de résultat
+                            byte[] messageResult = Message.createResultat(siteElected, me);
+                            System.out.println("GestionnaireElection:: Election terminée, le site elu est " + siteElected);
                             sendMessage(messageResult);
 
                             // l'étape est maintenant les résultats
                             stageInProgress = StageInProgress.RESULTAT;
                         } else {
                             // Si on est pas dans la liste, la phase de l'annonce est toujours en cours
-                            // On récupère le vieux message d'annonce et on en reconstruit un à partir de celui-ci
-                            byte[] messageAnnonce = MessageUtil.creationAnnonce(message, me, myAptitude);
-                            System.out.println("Gestionnaire:: Election non terminée, on s'ajoute à la liste");
+                            // On récupère le vieux message d'annonce pour construire le nouveau
+                            byte[] messageAnnonce = Message.createAnnonce(message, me, myAptitude);
+                            System.out.println("GestionnaireElection:: Election non terminée, on s'ajoute à la liste");
 
                             sendMessage(messageAnnonce);
 
@@ -114,21 +129,20 @@ public class Gestionnaire extends Thread {
                         // On commence par envoyer la quittance à l'émetteur du message
                         sendQuittance(packetReceived.getAddress(), packetReceived.getPort());
 
-                        System.out.println("Gestionnaire:: Reception d'un message de résultat");
-                        List<Integer> siteResult = MessageUtil.extraitSitesResultat(message);
+                        System.out.println("GestionnaireElection:: Reception d'un message de résultat");
+                        List<Integer> siteResult = Message.extractSitesFromResult(message);
                         int elu = Message.extractElectedFromResult(message);
 
                         if (siteResult.contains(me)) {
                             // Si le résultat à fait le tour de l'anneau, alors on est dans la liste et le siteElected est le bon
                             stageInProgress = StageInProgress.FINI;
-                            synchronized (mutex) {
-                                mutex.notifyAll();
-                            }
+                            endElection();
+
                         } else if (stageInProgress == StageInProgress.RESULTAT && elu != siteElected) {
                             // Dans le cas ou l'on reçoit un message de résultat après en avoir eu un autre résultat
                             // Il y a une erreur alors on relance une élection
-                            byte[] messageAnnonce = MessageUtil.creationAnnonce(me, myAptitude);
-                            System.out.println("Gestionnaire:: On recommence une élection");
+                            byte[] messageAnnonce = Message.createAnnonce(me, myAptitude);
+                            System.out.println("GestionnaireElection:: On recommence une élection");
 
                             sendMessage(messageAnnonce);
 
@@ -138,26 +152,30 @@ public class Gestionnaire extends Thread {
                             siteElected = elu; // On élit le site
 
                             // On crée un message de résultat en prenant l'ancien et en s'ajoutant dedans.
-                            byte[] messageResult = MessageUtil.creationResultat(message, me);
-                            System.out.println("Gestionnaire:: Election terminée, annonce du résultat");
+                            byte[] messageResult = Message.createResultat(message, me);
+                            System.out.println("GestionnaireElection:: Election terminée, annonce du résultat");
                             sendMessage(messageResult);
 
                             // l'étape est maintenant les résultats
                             stageInProgress = StageInProgress.RESULTAT;
-                            synchronized (mutex) {
-                                mutex.notifyAll();
-                            }
+                            endElection();
                         }
                         break;
 
                     case PING:
-                        System.out.println("Gestionnaire:: Reception d'un message de ping");
+                        System.out.println("GestionnaireElection:: Reception d'un message de ping");
                         sendQuittance(packetReceived.getAddress(), packetReceived.getPort());
                         break;
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private void endElection() {
+        synchronized (mutex) {
+            mutex.notifyAll();
         }
     }
 
@@ -174,7 +192,7 @@ public class Gestionnaire extends Thread {
         try {
             socketReception.send(packetQuittance);
         } catch (IOException e) {
-            System.err.println("Gestionnaire:: échec d'envoi de la quittance");
+            System.err.println("GestionnaireElection:: échec d'envoi de la quittance");
             e.printStackTrace();
         }
     }
@@ -214,71 +232,68 @@ public class Gestionnaire extends Thread {
                     socketQuittance.send(packetMessage);
 
                     // On met le timeOut à 200 millisecondes et on attend la réponse du site
-                    socketQuittance.setSoTimeout(200);
+                    socketQuittance.setSoTimeout(TIMEOUT_QUITTANCE);
                     socketQuittance.receive(packetMessage);
 
                     // Si on a recu un message dans le temps imparti, on vérifie quand même que c'est le bon message
-                    if (MessageUtil.getTypeOfMessage(packetMessage.getData()) == MessageUtil.TypeMessage.QUITTANCE) {
+                    if (Message.getTypeOfMessage(packetMessage.getData()) == TypeMessage.QUITTANCE) {
                         quittanceReceived = true;
                     }
                 } catch (SocketTimeoutException e) {
-                    // Si il y a eu un timeout, ça veut dire que le site voisin n'est pas disponible, donc qu'on va demander
-                    // au voisin d'après
-                    System.out.println("Gestionnaire:: neighbor n°" + workingNeighbor + " est inactif");
+                    /* Si il y a eu un timeout, ça veut dire que le site voisin n'est pas disponible, donc qu'on va demander
+                     * au voisin d'après */
+                    System.out.println("GestionnaireElection:: neighbor n°" + workingNeighbor + " est inactif");
                     workingNeighbor = (workingNeighbor + 1) % numberSiteTot;
 
-                    // Dans le cas ou on a fait un trour, on finit les élections
+                    // Dans le cas ou on a fait un tour, on finit les élections car il n'y a que nous
                     if (workingNeighbor == me) {
                         stageInProgress = StageInProgress.FINI;
                         lapAround = true;
                         siteElected = me;
-                        // on libère le mutex pour que l'applifactif puisse récupérer les informations
-                        synchronized (mutex) {
-                            mutex.notifyAll();
-                        }
+                        // Ensuite on finit les élections
+                        endElection();
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         } catch (SocketException e) {
-            System.err.println("Gestionnaire:: problème lors de l'ouverture du socketReception d'envoie du message");
+            System.err.println("GestionnaireElection:: problème lors de l'ouverture du socketReception d'envoie du message");
             e.printStackTrace();
         }
     }
-
 
     /**
      * Permet de commencer les éléctions en envoyant un message d'annonce
      */
     public void startElection() {
-        System.out.println("Gestionnaire:: début des élections");
+        System.out.println("GestionnaireElection:: début des élections");
 
         stageInProgress = StageInProgress.ANNONCE;
-        byte[] message = MessageUtil.creationAnnonce(me, myAptitude);
+        byte[] message = Message.createAnnonce(me, myAptitude);
 
         sendMessage(message);
     }
 
     /**
      * Permet de récupérer le site élu.
-     * Cette fonction est blocante tant qu'une éléection est en cours.
+     * Cette fonction est blocante tant qu'une élection est en cours.
      *
      * @return le site élu
      */
     public Site getElu() {
         // On vérifie qu'on est pas en train de faire une annonce avant de récupérér les infos du site
 
-        while (stageInProgress == StageInProgress.ANNONCE) {
-            synchronized (mutex) {
+        synchronized (mutex) {
+            while (stageInProgress == StageInProgress.ANNONCE) {
                 try {
-                    mutex.wait(2000);
-                    if(stageInProgress == StageInProgress.ANNONCE){
+                    mutex.wait(TIMEOUT_ELECTION);
+                    if (stageInProgress == StageInProgress.ANNONCE) {
                         startElection();
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
-                    System.err.println("Gestionnaire:: Problème dans la gestion du mutex");
+                    System.err.println("GestionnaireElection:: Problème dans la gestion du mutex");
                 }
             }
         }
