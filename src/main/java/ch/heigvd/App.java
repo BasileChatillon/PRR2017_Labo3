@@ -1,8 +1,5 @@
 package ch.heigvd;
 
-import ch.heigvd.util.Message;
-import ch.heigvd.util.TypeMessage;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,30 +9,32 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 
-/**
- * Hello world!
- */
+
 public class App extends Thread {
+
     private final String propertiesFileName = "site.properties";
 
-    private int numero;
-    private Site elu;
+    private int number;
+    private Site electedSite;
 
     private Gestionnaire gestionnaire;
 
-    private DatagramSocket socket;
     Random r;
 
-
+    /**
+     * Constructeur qui permet d'initialiser le gestionaire ainsi que les différents éléments nécessaires au bon
+     * fonctionnement du thread
+     *
+     * @param args La numéro du site
+     */
     public App(String[] args) {
-        r = new Random();
-
         if (args.length != 1) {
             System.err.println("Invalid argument, you need to pass a site number");
             System.exit(1);
         }
 
-        this.numero = Integer.parseInt(args[0]);
+        this.number = Integer.parseInt(args[0]);
+        this.r = new Random();
 
         Properties properties = new Properties();
         try {
@@ -53,72 +52,81 @@ public class App extends Thread {
             System.out.println(site);
         }
 
-        gestionnaire = new Gestionnaire(sites, numero, timeOutQuittance);
+        gestionnaire = new Gestionnaire(sites, number, timeOutQuittance);
         gestionnaire.start();
-
     }
 
+    /**
+     * Le thread va de temps en temps récupérer l'élu et tenter de le contacter pour voir s'il est en ligne.
+     * Si ce n'est pas le cas, il va lancer une nouvelle élection
+     */
     public void run() {
         System.out.println("Applicatif:: démarage des permières élections");
-        gestionnaire.commencerElection();
+
+        gestionnaire.statElection();
+
+        DatagramSocket socketPing;
 
         try {
-            System.out.println("Applicatif:: Création du socket de récéption pour le site n°" + numero);
-            socket = new DatagramSocket();
-        } catch (SocketException e) {
-            System.err.println("Applicatif:: Echeq de la création du socker pour le site n°" + numero);
-            e.printStackTrace();
-        }
+            System.out.println("Applicatif:: Création du socket de récéption pour le site n°" + number);
+            socketPing = new DatagramSocket();
 
-        DatagramPacket paquet;
+            DatagramPacket packetPing;
 
-        while (true) {
-            System.out.println("Applicatif:: récupération de l'élu");
-            elu = gestionnaire.getElu();
-            System.out.println("Applicatif:: L'élu est : " + elu.getNumero());
+            while (true) {
+                System.out.println("Applicatif:: récupération de l'élu");
+                electedSite = gestionnaire.getElu();
+                System.out.println("Applicatif:: L'élu est : " + electedSite.getNumber());
 
-            try {
-                if (elu.getNumero() == numero) {
-                    sleep(3000 + r.nextInt(2000));
-                    continue;
+                try {
+                    // Dans le cas ou nous sommes l'élu, on attend simplement un moment et on recommence
+                    if (electedSite.getNumber() == number) {
+                        sleep(3000 + r.nextInt(2000));
+                        continue;
+                    }
+
+                    System.out.println("Applicatif:: Création du Ping");
+                    byte[] messagePing = MessageUtil.creationPing();
+                    packetPing = new DatagramPacket(messagePing, messagePing.length, electedSite.getIp(), electedSite.getPort());
+
+                    socketPing.send(packetPing);
+
+                    // On crée le paquet de réponse
+                    packetPing = new DatagramPacket(new byte[1], 1);
+
+                    // On pose une limite de temps sur la réception du reçu
+                    System.out.println("Applicatif:: récupération de l'écho");
+                    socketPing.setSoTimeout(200);
+                    socketPing.receive(packetPing);
+
+                    // Si on a reçu la réponse à temps, alors on vérifie que c'est bien une quittance
+                    byte[] message = new byte[packetPing.getLength()];
+                    System.arraycopy(packetPing.getData(), packetPing.getOffset(), message, 0, packetPing.getLength());
+
+                    if (MessageUtil.getTypeOfMessage(message) == MessageUtil.TypeMessage.QUITTANCE) {
+                        System.out.println("L'élu est toujours en ligne");
+                        sleep(3000 + r.nextInt(2000));
+                    }
+
+                } catch (SocketTimeoutException e) {
+                    // Si on a pas reçu la quittance à temps, on lance une élection
+                    System.out.println("Applicatif:: l'élu est hs, démarrage d'élections");
+                    gestionnaire.statElection();
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-                System.out.println("Applicatif:: Création du Ping");
-                byte[] messagePing = Message.createPing();
-                paquet = new DatagramPacket(messagePing, messagePing.length, elu.getIp(), elu.getPort());
-
-                socket.send(paquet);
-
-                paquet = new DatagramPacket(new byte[1], 1);
-
-                // On pose une limite de temps sur la réception du reçu
-                System.out.println("Applicatif:: récupération de l'écho");
-                socket.setSoTimeout(200);
-                socket.receive(paquet);
-
-
-                byte[] message = new byte[paquet.getLength()];
-                System.arraycopy(paquet.getData(), paquet.getOffset(), message, 0, paquet.getLength());
-
-                if (Message.getTypeOfMessage(message) == TypeMessage.QUITTANCE) {
-                    System.out.println("L'élu est toujours en ligne");
-                    sleep(3000 + r.nextInt(2000));
-                }
-
-            } catch (SocketTimeoutException e) {
-                System.out.println("Applicatif:: l'élu est hs, démarrage d'élections");
-                gestionnaire.commencerElection();
-            } catch (Exception e) {
-                e.printStackTrace();
             }
+        } catch (SocketException e) {
+            System.err.println("Applicatif:: Echec de la création du socket pour le site n°" + number);
+            e.printStackTrace();
         }
     }
 
     private List<Site> getAllSite(Properties properties) {
         List<Site> sites = new ArrayList<>();
 
-
         // get the property value and print it out
-        String number_site = properties.getProperty("number_site");
+        String number_site = properties.getProperty("totalSiteNumber");
         System.out.println(number_site);
 
         String siteAddress;
@@ -141,32 +149,25 @@ public class App extends Thread {
     }
 
     private int getTimeOutQuittance(Properties properties) {
-        int timeOutQuittance = 100;
-        InputStream inputStream;
-
         // get the property value and print it out
         String timeOutQuittanceString = properties.getProperty("TIMEOUT_QUITTANCE");
-        timeOutQuittance = Integer.parseInt(timeOutQuittanceString);
-
-        return timeOutQuittance;
+        return Integer.parseInt(timeOutQuittanceString);
     }
 
     private Properties getSiteProperties() throws IOException {
-        Properties prop = new Properties();
+        Properties properties = new Properties();
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(propertiesFileName);
 
         if (inputStream != null) {
-            prop.load(inputStream);
+            properties.load(inputStream);
         } else {
             throw new FileNotFoundException("property file '" + propertiesFileName + "' not found in the classpath");
         }
 
-        return prop;
+        return properties;
     }
 
     public static void main(String[] args) {
         new App(args).start();
     }
-
-
 }
