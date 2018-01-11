@@ -108,8 +108,10 @@
  * AVANT d'avoir pu envoyer le nouveau message d'annonce).
  * L'élection est donc gelée car le site émetteur ayant reçu une quittance de son voisin, ne pense pas qu'il est
  * en panne.
- * C'est grâce au timeOut des élections que nous surmontons ce problème. On peut bien constater qu'après que l'élection
- * aie durée plus de X temps, alors on en relance simplement une nouvelle.
+ * Ce problème est résolu grâce à la partie applicative. Compte tenu qu'elle va de temps en temps récupérer l'élu, elle
+ * va être mise en attente par le gestionnaire tant qu'il est en élection. Hors, si l'élection est gelée, c'est là que
+ * le time-out entrera en jeu et permettra d'en recommencer une élection après un temps d'attente de
+ * 8 secondes.
  *
  * Le dernier cas ressemble au précédent. Un site reçoit un message d'annonce, envoie la quittance, transmet
  * le message au site suivant et crash. Ce problème est géré, car lorsqu'un nouveau message lui sera envoyé,
