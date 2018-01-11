@@ -1,13 +1,13 @@
 /**
  * Basile Châtillon & Nicolas Rod
- * <p>
+ * 
  * Laboratoire de PRR n°3 : Election en anneau avec panne
- * <p>
+ *
  * --- Marche à suivre ---
  * Pour lancer les différente sites, il suffit de passer le numéro du site en argument du programme.
  * Le numéro doit être compris entre 0 et 3 vu qu'il y a 4 sites dans cette exemple.
  * Il n'est pas possible de lancer deux fois le même site.
- * <p>
+ *
  * --- Conception ---
  * Comme la donnée du laboratoire le demandait, nous avons implémenté deux threads pour faire ce laboratoire.
  * Le premier, le thread App, se charge de vérifier de temps en temps que le site élu n'est pas en panne.
@@ -19,20 +19,20 @@
  * Pour pouvoir procéder à une élection en anneau avec panne, nous sommes partis du principe que chaque site
  * connait l'adresse de tous les autres sites. Nous avons stocké ces adresses dans un fichier de ressource
  * site.properties
- * <p>
+ *
  * Nous avons également décidé d'ajouter une classe Site qui modélise un site et qui contient toutes les coordonnées
  * nécessaires à l'établissement d'une connexion UDP point à point (une IP et un port).
- * <p>
+ *
  * Nous avons finalament un package "util" qui contient des classes nous permettant de construire les différents
  * messages à envoyer selon les informations et également de récupérer les diverses informations contenues
  * dans les messages.
  * Il contient également un Enum TypeMessage qui recensse les différents messages que nous utilisons dans cette
  * application. Chaque Type de message est également associé à un byte.
- * <p>
- * <p>
+ *
+ *
  * Pour communiquer avec le thread gestionnaire, l'applicatif va simplement appeler ses méthodes. En effet, il possède
  * un instance de celui-ci.
- * <p>
+ *
  * Le thread App, pour contacter l'élu, va d'abord le récupérer auprès de son gestionnaire. Si le gestionnaire
  * n'est pas en train de faire une élection, il lui fournira instantanément. Dans le cas contraire, le thread applicatif
  * sera bloqué jusqu'à la fin de l'élection OU jusqu'à ce que l'attente dépasse un time out. Dès lors une nouvelle
@@ -43,13 +43,13 @@
  * Dans le cas où le site élu a bien envoyé sa quittance, nous endormons le thread applicatif pour qu'il évite
  * de noyer le réseau de message. Le temps d'attente est aléatoire pour éviter que le site élu recoive tous les
  * messages de ping en même temps.
- * <p>
+ *
  * Le gestionnaire aura lui un socket ouvert avec son port. Celui-ci lui permettra de se faire contacter par
  * 1. les autres gestionnaires des autres sites pour procéder aux échanges des annonces ainsi que des résultats
  * 2. Les parties applicatives des autres sites dans le cas où il est élu (car il doit répondre au message de ping
  * des autres sites.
- * <p>
- * <p>
+ *
+ *
  * Les messages envoyés aux sites sont formés de différentes manières selon le type de message. Néanmoins, le premier
  * byte de chaque message correspond au type du message.
  * Les message ANNONCE sont donc composés de 1 byte représentant le type. Ensuite nous aurons autant de fois 8 bytes
@@ -58,20 +58,20 @@
  * Nous avons décidé que le numéro de site sera un int, ce qui permet d'avoir plus de marge vis-à-vis du nombre
  * de sites. L'aptitude étant également un int, (le numéro de port peut être relativement
  * grand) nous arrivons à un totale de 4bytes + 4bytes = 8 bytes par site.
- * <p>
+ *
  * Les messages RESULTAT sont composés de 1 byte représantant le type. 4 bytes représentant le numéro du site élu
  * (car c'est un int) puis la liste des numéros des sites qui ont vu ce message. Donc autant de fois 4 bytes qu'il y a
  * de site.
- * <p>
+ *
  * Finalement nous avons les messages du PING et de la QUITTANCE qui sont eux composés que d'un seul byte, le
  * type du message.
- * <p>
- * <p>
+ *
+ *
  * Une partie compliquée a été d'implémenter la gestion des quittances. Celle du ping est facile à implémenter vu
  * que c'est la partie applicative qui va s'occuper de la récéptionner.
  * Lorsque le gestionnaire reçoit un message de ping, il lui suffit simplement de répondre à ce message par une
  * quittance.
- * <p>
+ *
  * La gestion des quittances entre gestionnaire se fait directement dans la méthode d'envoie. Lorsqu'on désire
  * envoyer un message, nous passerons par la méthode envoie. Celle-ci va ouvrir un nouveau socket et l'utiliser
  * pour envoyer le message et attendre la quittance. Si la quittance n'est pas reçue après un temps imparti, alors
@@ -85,13 +85,13 @@
  * À chaque envoi de message, nous tentons toujours de contacter notre voisin direct en premier puis
  * les autres ensuite. C'est-à-dire que si lors de l'envoi d'un message il s'avère qu'il est en panne, lors du prochain
  * message nous tentons quand même de le lui envoyer.
- * <p>
- * <p>
+ *
+ *
  * --- Tests ---
  * Tout premièrement, nous avons testé de lancer les différents sites un à un avec un intervale suffisament grand pour
  * qu'ils aient le temps de faire une élection. Cela a permis de vérifier que lors de la mise en service d'un site
  * celui-ci lance bien une élection, et que le bon site devienne l'élu.
- * <p>
+ *
  * Nous avons ensuite tester les pannes.
  * La première est de faire tomber un site non-élu en panne lorsque l'élection n'est pas terminée (il suffit d'arrêter le
  * processus). On constate donc bien que tous les autres sites continues à vivre paisiblement car le site élu n'est pas
@@ -102,15 +102,18 @@
  * Nous avons également constaté que lorsque le site élu tombe en panne, les sites non-élus lancent parfois
  * chacun de leur côté une élection. Une seule de celle-ci finit par aboutir, ce qui concorde avec la spécification
  * du protocole.
- * <p>
+ *
  * Un autre test a été de faire tomber en panne un site juste après que celui-ci aie envoyé une QUITTANCE après avoir
  * reçu un message d'annonce. (il reçoit un message d'annonce, il envoie la quittance à l'émetteur et tombe en panne
  * AVANT d'avoir pu envoyer le nouveau message d'annonce).
  * L'élection est donc gelée car le site émetteur ayant reçu une quittance de son voisin, ne pense pas qu'il est
  * en panne.
- * C'est grâce au timeOut des élections que nous surmontons ce problème. On peut bien constater qu'après que l'élection
- * aie durée plus de X temps, alors on en relance simplement une nouvelle.
- * <p>
+ *
+ * Ce problème est résolu grâce à la partie applicative. Compte tenu qu'elle va de temps en temps récupérer l'élu, elle
+ * va être mise en attente par le gestionnaire tant qu'il est en élection. Hors, si l'élection est gelée, c'est là que
+ * le time-out entrera en jeu et permettra d'en recommencer une élection après un temps d'attente de
+ * 8 secondes.
+ *
  * Le dernier cas ressemble au précédent. Un site reçoit un message d'annonce, envoie la quittance, transmet
  * le message au site suivant et crash. Ce problème est géré, car lorsqu'un nouveau message lui sera envoyé,
  * on pourra voir qu'il ne renvoie pas de quittance et qu'il est donc en panne.
