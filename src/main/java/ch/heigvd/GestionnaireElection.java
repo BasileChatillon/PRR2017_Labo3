@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Classe représentant un thread s'occupant gérer l'élection d'un élu avec les autres sites.
+ */
 public class GestionnaireElection extends Thread {
     /**
      * Un enum qui permet de définir l'étape en cours
