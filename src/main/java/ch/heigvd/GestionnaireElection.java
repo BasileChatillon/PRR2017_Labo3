@@ -85,9 +85,13 @@ public class GestionnaireElection extends Thread {
                         // On commence par envoyer la quittance à l'émetteur du message
                         sendQuittance(packetReceived.getAddress(), packetReceived.getPort());
 
+                        /* Décommenter ces lignes pour simuler une panne du site 3 après l'annonce de Quittance et
+                         * avant la transmission du message au voisin
                         if (me == 3) {
-                            int i = 1 / 0;
+                            System.exit(1);
                         }
+                        */
+
                         System.out.println("GestionnaireElection:: Réception d'un message d'annonce");
                         // on récupère les site qui ont émis une annonce en les mappant avec leur aptitude
                         Map<Integer, Integer> siteAnnonces = Message.extractAnnonce(message);
